@@ -32,13 +32,14 @@ import bregman.suite as br
 import pdb
 
 class SparseApproxSpectrum(object):
-	# class for 2D patch analysis of audio files
-    def __init__(self, n_components=16, patch_size=(12,12), max_samples=1000000, **kwargs):
-		# initialization:
-		#	n_components=16 - how many components to 
-		#	patch_size=(12,12) - size of time-frequency 2D patches in spectrogram units (freq,time)
-		#	max_samples=1000000 - if num audio patches exceeds this threshold, randomly sample spectrum        self.omp = OrthogonalMatchingPursuit()
-	    self.n_components = n_components
+    # class for 2D patch analysis of audio files
+    def __init__(self, n_components=16, patch_size=(12,12), max_samples=1000000, **kwargs):		
+        # initialization:
+        #	n_components=16 - how many components to extract
+        #	patch_size=(12,12) - size of time-frequency 2D patches in spectrogram units (freq,time)
+        #	max_samples=1000000 - if num audio patches exceeds this threshold, randomly sample spectrum
+        self.omp = OrthogonalMatchingPursuit()
+        self.n_components = n_components
         self.patch_size = patch_size
         self.max_samples = max_samples
         self.D = None
