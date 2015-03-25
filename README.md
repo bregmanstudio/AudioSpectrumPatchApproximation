@@ -2,11 +2,11 @@ AudioSpectrumPatchApproximation
 Audio time-frequency 2D sparse code dictionary learning and approximation in Python
  	Time-frequency 2D sparse code dictionary learning and approximation in Python
 
- https://github.com/bregmanstudio/Audio2DSparseApprox 
+ https://github.com/bregmanstudio/AudioSpectrumPatchApproximation
 
  Assumes python distribution with numply / scipy installed
 
- (c) 2014-2015 Michael A. Casey, Bregman Media Labs, Dartmouth College
+ Michael A. Casey, 2014-2015 Bregman Media Labs, Dartmouth College
  See attached license file (Apache)
 
  Dependencies:
