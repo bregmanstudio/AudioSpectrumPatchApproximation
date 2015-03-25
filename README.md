@@ -14,7 +14,7 @@ Audio time-frequency 2D sparse code dictionary learning and approximation in Pyt
    
    skimage - http://scikit-image.org/docs/dev/api/skimage.html
    
- 	bregman - https://github.com/bregmanstudio/BregmanToolkit
+   bregman - https://github.com/bregmanstudio/BregmanToolkit
  	
    scikits.audiolab - https://pypi.python.org/pypi/scikits.audiolab/
  
