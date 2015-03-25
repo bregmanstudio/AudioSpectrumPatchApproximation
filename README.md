@@ -1,6 +1,6 @@
 AudioSpectrumPatchApproximation
+
 Audio time-frequency 2D sparse code dictionary learning and approximation in Python
- 	Time-frequency 2D sparse code dictionary learning and approximation in Python
 
  https://github.com/bregmanstudio/AudioSpectrumPatchApproximation
 
