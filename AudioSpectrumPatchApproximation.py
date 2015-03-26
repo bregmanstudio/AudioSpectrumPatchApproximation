@@ -266,3 +266,68 @@ class SparseApproxSpectrumNonNegative(SparseApproxSpectrum):
             self.w = self.model.transform(self.data)
             w = self.w
         return SparseApproxSpectrum.reconstruct_spectrum(self, w=w, randomize=randomize)
+
+class SparseApproxSpectrumPLCA2D(SparseApproxSpectrum):
+    """PLCA2D sparse dictionary learning from 2D spectrogram patches 
+    initialization:
+    	patch_size=(12,12) - size of time-frequency 2D patches in spectrogram units (freq,time)
+    	max_samples=1000000 - if num audio patches exceeds this threshold, randomly sample spectrum
+    """
+    def __init__(self, patch_size=(12,12), max_samples=1000000):
+        self.patch_size = patch_size
+        self.max_samples = max_samples
+        self.D = None
+        self.data = None
+        self.components = None
+        self.zscore=False
+        self.log_amplitude=False
+        self.X_hat_l=None
+        self.X_hat=None
+
+    def extract_codes(self, F, n_components=16, log_amplitude=True, **nmf_args):
+    	"""Given a spectrogram, learn a dictionary of 2D patch atoms from spectrogram data
+        inputs:
+            F - feature class with spectrogram data (frequency x time)
+            n_components - how many components to extract [16]
+            log_amplitude - weather to apply log amplitude scaling log(1+X)
+            **nmf_args - keyword arguments for ProjectedGradientNMF(...) [None]
+        outputs:
+            self.data - 2D patches of input spectrogram
+            self.D.components_ - dictionary of 2D NMF components
+        """
+        zscore=False
+        self.F = F
+        self.data = F.X
+        self.X = F.X
+        self.n_components = n_components
+        self.log_amplitude = log_amplitude
+        if self.log_amplitude:
+            F.X = np.log(1+F.X)
+        F.separate(br.SIPLCA2, n_components, win=self.patch_size, **nmf_args)
+        class Bunch:
+            def __init__(self, **kwds):
+                self.__dict__.update(kwds)
+        self.D = Bunch(components_ = np.vstack(F.w.swapaxes(0,1).reshape(F.w.shape[1],-1)))
+        self.w = F.w
+        self.z = F.z
+        self.h = F.h
+
+    def plot_codes(self, cbar=False, show_axis=False, **kwargs):
+        patch_size = self.patch_size
+        self.patch_size = (self.F.w.shape[0],self.F.w.shape[2])
+        super(SparseApproxSpectrumPLCA2D, self).plot_codes(cbar, show_axis, **kwargs)
+        self.patch_size = patch_size
+
+    def reconstruct_individual_spectra(self, w=None, randomize=False):
+    	"reconstruct by fitting current NMF 2D dictionary to self.data"
+        w = w if w is not None else self.w
+        self.X_hat_l = self.F.invert_components(br.SIPLCA2, w, self.z, self.h)
+        if self.log_amplitude:
+            self.X_hat_l = [np.exp(x)-1.0 for x in self.X_hat_l]
+        self.reconstruct_spectrum(w, randomize)
+        
+    def reconstruct_spectrum(self, w=None, randomize=False):
+        w = w if w is not None else self.w
+        if self.X_hat_l is None:
+            self.reconstruct_individual_spectra(w,randomize)
+        self.X_hat = np.array(self.X_hat_l).sum(0)
