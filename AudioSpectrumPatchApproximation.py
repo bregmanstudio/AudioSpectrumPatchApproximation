@@ -84,6 +84,10 @@ class SparseApproxSpectrum(object):
            self.D.components_ - Gabor dictionary of thetas x sigmas x frequencies atoms
         """
         self._extract_data_patches(X, zscore, log_amplitude)
+        self.n_components = len(thetas)*len(sigmas)*len(frequencies)
+        self.thetas = thetas
+        self.sigmas = sigmas
+        self.frequencies = frequencies
         a,b = self.patch_size
         self.kernels = []
         for theta in thetas:
@@ -119,20 +123,23 @@ class SparseApproxSpectrum(object):
         print "Dictionary learning from data..."
         self.D = self.dico.fit(self.data)
 
-    def plot_codes(self, cbar=False, **kwargs):
+    def plot_codes(self, cbar=False, show_axis=False, **kwargs):
         "plot the learned or generated 2D sparse code dictionary"
         N = int(np.ceil(np.sqrt(self.n_components)))
         kwargs.setdefault('cmap', plt.cm.gray_r)
         kwargs.setdefault('origin','bottom')
         kwargs.setdefault('interpolation','nearest')
         for i, comp in enumerate(self.D.components_):
-            plt.subplot(N, N, i + 1)
+            plt.subplot(N, N, i+1)
             plt.imshow(comp.reshape(self.patch_size), **kwargs)
             if cbar:
                 plt.colorbar()
+            if not show_axis:
+                plt.axis('off')
             plt.xticks(())
             plt.yticks(())
-        plt.suptitle('Dictionary of spectrum patches\n', fontsize=16)
+            plt.title('%d'%(i))
+        plt.suptitle('Dictionary of Spectrum Patches\n', fontsize=14)
         plt.subplots_adjust(0.08, 0.02, 0.92, 0.85, 0.08, 0.23)
 
     def extract_audio_dir_codes(self, dir_expr='/home/mkc/exp/FMRI/stimuli/Wav6sRamp/*.wav',**kwargs):
@@ -202,8 +209,10 @@ class SparseApproxSpectrum(object):
         plt.figure()
         rn = np.ceil(self.n_components**0.5)
         for k in range(self.n_components):
-            plt.subplot(rn,rn,k+1)            
+            plt.subplot(rn,rn,k+1)
             br.feature_plot(self.X_hat_l[k], nofig=1, **kwargs)
+            plt.title('%d'%(k))
+        plt.suptitle('Component Reconstructions\n', fontsize=14)
 
 class NMFSpectrum(SparseApproxSpectrum):
     """Sparse dictionary learning from non-negative 2D spectrogram patches 
