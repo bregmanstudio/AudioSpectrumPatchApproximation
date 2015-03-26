@@ -35,13 +35,11 @@ import pdb
 class SparseApproxSpectrum(object):
     """class for 2D patch analysis of audio files
     initialization:
-    	n_components=16 - how many components to extract
     	patch_size=(12,12) - size of time-frequency 2D patches in spectrogram units (freq,time)
     	max_samples=1000000 - if num audio patches exceeds this threshold, randomly sample spectrum
     """
-    def __init__(self, n_components=16, patch_size=(12,12), max_samples=1000000, **kwargs):		
+    def __init__(self, patch_size=(12,12), max_samples=1000000, **kwargs):		
         self.omp = OrthogonalMatchingPursuit()
-        self.n_components = n_components
         self.patch_size = patch_size
         self.max_samples = max_samples
         self.D = None
@@ -108,17 +106,19 @@ class SparseApproxSpectrum(object):
                 self.__dict__.update(kwds)
         self.D = Bunch(components_ = np.vstack(self.kernels))
 
-    def extract_codes(self, X, zscore=True, log_amplitude=True):
+    def extract_codes(self, X, n_components=16, zscore=True, log_amplitude=True):
     	"""Given a spectrogram, learn a dictionary of 2D patch atoms from spectrogram data
         inputs:
             X - spectrogram data (frequency x time)
-            zscore - whether to zscore the ensemble of 2D patches
+    	    n_components - how many components to extract [16]
+            zscore - whether to zscore the ensemble of 2D patches [True]
             log_amplitude - whether to apply log(1+X) scaling of spectrogram data [True]
         outputs:
             self.data - 2D patches of input spectrogram
             self.D.components_ - dictionary of learned 2D atoms for sparse coding
         """
         self._extract_data_patches(X, zscore, log_amplitude)
+        self.n_components = n_components
         self.dico = MiniBatchDictionaryLearning(n_components=self.n_components, alpha=1, n_iter=500)
         print "Dictionary learning from data..."
         self.D = self.dico.fit(self.data)
@@ -217,23 +217,25 @@ class SparseApproxSpectrum(object):
 class NMFSpectrum(SparseApproxSpectrum):
     """Sparse dictionary learning from non-negative 2D spectrogram patches 
     initialization:
-    	n_components=16 - how many components to extract
     	patch_size=(12,12) - size of time-frequency 2D patches in spectrogram units (freq,time)
     	max_samples=1000000 - if num audio patches exceeds this threshold, randomly sample spectrum
     """
     def __init__(self, **kwargs):
         SparseApproxSpectrum.__init__(self,**kwargs)
 
-    def extract_codes(self, X, **kwargs):
+    def extract_codes(self, X, n_components=16, log_amplitude=True, **kwargs):
     	"""Given a spectrogram, learn a dictionary of 2D patch atoms from spectrogram data
         inputs:
            X - spectrogram data (frequency x time)
+           n_components - how many components to extract [16]
+           log_amplitude - weather to apply log amplitude scaling log(1+X)
         outputs:
            self.data - 2D patches of input spectrogram
            self.D.components_ - dictionary of 2D NMF components
         """
-        self.zscore=False
-        self._extract_data_patches(X)
+        zscore=False
+        self._extract_data_patches(X, zscore, log_amplitude)
+        self.n_components=n_components
         kwargs.setdefault('sparseness','components')
         kwargs.setdefault('init','nndsvd')
         kwargs.setdefault('beta',0.5)
