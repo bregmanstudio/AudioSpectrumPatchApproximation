@@ -47,7 +47,7 @@ class SparseApproxSpectrum(object):
         self.D = None
         self.data = None
         self.components = None
-        self.standardize=False
+        self.zscore=False
 
     def _extract_data_patches(self, X):
     	"utility method for converting spectrogram data to 2D patches "
@@ -57,19 +57,19 @@ class SparseApproxSpectrum(object):
         if len(data)>self.max_samples:
             data = np.random.permutation(data)[:self.max_samples]
         print data.shape
-        if self.standardize:
+        if self.zscore:
             self.mn = np.mean(data, axis=0) 
             self.std = np.std(data, axis=0)
             data -= self.mn
             data /= self.std
         self.data = data
 
-    def make_gabor_field(self, X, standardize=False, thetas=range(4), 
+    def make_gabor_field(self, X, zscore=False, thetas=range(4), 
     		sigmas=(1,3), frequencies=(0.05, 0.25)) :
         """Given a spectrogram, prepare 2D patches and Gabor filter bank kernels
         inputs:
            X - spectrogram data (frequency x time)
-           standardize - whether to standardize the ensemble of 2D patches
+           zscore - whether to zscore the ensemble of 2D patches
            thetas - list of 2D Gabor filter orientations in units of pi/4.
            sigmas - list of 2D Gabor filter standard deviations in oriented direction
            frequencies - list of 2D Gabor filter frequencies
@@ -77,7 +77,7 @@ class SparseApproxSpectrum(object):
            self.data - 2D patches of input spectrogram
            self.D.components_ - Gabor dictionary of thetas x sigmas x frequencies atoms
         """
-        self.standardize=standardize
+        self.zscore=zscore
         self._extract_data_patches(X)
         a,b = self.patch_size
         self.kernels = []
@@ -99,16 +99,16 @@ class SparseApproxSpectrum(object):
                 self.__dict__.update(kwds)
         self.D = Bunch(components_ = np.vstack(self.kernels))
 
-    def extract_codes(self, X, standardize=False):
+    def extract_codes(self, X, zscore=False):
     	"""Given a spectrogram, learn a dictionary of 2D patch atoms from spectrogram data
         inputs:
            X - spectrogram data (frequency x time)
-           standardize - whether to standardize the ensemble of 2D patches
+           zscore - whether to zscore the ensemble of 2D patches
         outputs:
            self.data - 2D patches of input spectrogram
            self.D.components_ - dictionary of learned 2D atoms for sparse coding
         """
-        self.standardize=standardize
+        self.zscore=zscore
         self._extract_data_patches(X)
         self.dico = MiniBatchDictionaryLearning(n_components=self.n_components, alpha=1, n_iter=500)
         print "Dictionary learning from data..."
@@ -159,7 +159,7 @@ class SparseApproxSpectrum(object):
         if randomize:
             components = np.random.permutation(components)
         recon = np.dot(w, components)
-        if self.standardize:
+        if self.zscore:
             recon = recon * self.std
             recon = recon + self.mn
         recon = recon.reshape(-1, *self.patch_size)
@@ -214,7 +214,7 @@ class NMFSpectrum(SparseApproxSpectrum):
            self.data - 2D patches of input spectrogram
            self.D.components_ - dictionary of 2D NMF components
         """
-        self.standardize=False
+        self.zscore=False
         self._extract_data_patches(X)
         kwargs.setdefault('sparseness','components')
         kwargs.setdefault('init','nndsvd')
