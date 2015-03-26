@@ -48,10 +48,15 @@ class SparseApproxSpectrum(object):
         self.data = None
         self.components = None
         self.zscore=False
+        self.log_amplitude=False
 
-    def _extract_data_patches(self, X):
+    def _extract_data_patches(self, X, zscore, log_amplitude):
     	"utility method for converting spectrogram data to 2D patches "
+        self.zscore=zscore
+        self.log_amplitude=log_amplitude
         self.X = X
+        if self.log_amplitude:
+            X = np.log(1+X)
         data = extract_patches_2d(X, self.patch_size)
         data = data.reshape(data.shape[0], -1)
         if len(data)>self.max_samples:
@@ -64,21 +69,21 @@ class SparseApproxSpectrum(object):
             data /= self.std
         self.data = data
 
-    def make_gabor_field(self, X, zscore=False, thetas=range(4), 
+    def make_gabor_field(self, X, zscore=True, log_amplitude=True, thetas=range(4), 
     		sigmas=(1,3), frequencies=(0.05, 0.25)) :
         """Given a spectrogram, prepare 2D patches and Gabor filter bank kernels
         inputs:
            X - spectrogram data (frequency x time)
-           zscore - whether to zscore the ensemble of 2D patches
-           thetas - list of 2D Gabor filter orientations in units of pi/4.
-           sigmas - list of 2D Gabor filter standard deviations in oriented direction
-           frequencies - list of 2D Gabor filter frequencies
+           zscore - whether to zscore the ensemble of 2D patches [True]
+           log_amplitude - whether to apply log(1+X) scaling of spectrogram data [True]
+           thetas - list of 2D Gabor filter orientations in units of pi/4. [range(4)]
+           sigmas - list of 2D Gabor filter standard deviations in oriented direction [(1,3)]
+           frequencies - list of 2D Gabor filter frequencies [(0.05,0.25)]
         outputs:
            self.data - 2D patches of input spectrogram
            self.D.components_ - Gabor dictionary of thetas x sigmas x frequencies atoms
         """
-        self.zscore=zscore
-        self._extract_data_patches(X)
+        self._extract_data_patches(X, zscore, log_amplitude)
         a,b = self.patch_size
         self.kernels = []
         for theta in thetas:
@@ -99,17 +104,17 @@ class SparseApproxSpectrum(object):
                 self.__dict__.update(kwds)
         self.D = Bunch(components_ = np.vstack(self.kernels))
 
-    def extract_codes(self, X, zscore=False):
+    def extract_codes(self, X, zscore=True, log_amplitude=True):
     	"""Given a spectrogram, learn a dictionary of 2D patch atoms from spectrogram data
         inputs:
-           X - spectrogram data (frequency x time)
-           zscore - whether to zscore the ensemble of 2D patches
+            X - spectrogram data (frequency x time)
+            zscore - whether to zscore the ensemble of 2D patches
+            log_amplitude - whether to apply log(1+X) scaling of spectrogram data [True]
         outputs:
-           self.data - 2D patches of input spectrogram
-           self.D.components_ - dictionary of learned 2D atoms for sparse coding
+            self.data - 2D patches of input spectrogram
+            self.D.components_ - dictionary of learned 2D atoms for sparse coding
         """
-        self.zscore=zscore
-        self._extract_data_patches(X)
+        self._extract_data_patches(X, zscore, log_amplitude)
         self.dico = MiniBatchDictionaryLearning(n_components=self.n_components, alpha=1, n_iter=500)
         print "Dictionary learning from data..."
         self.D = self.dico.fit(self.data)
@@ -164,6 +169,8 @@ class SparseApproxSpectrum(object):
             recon = recon + self.mn
         recon = recon.reshape(-1, *self.patch_size)
         self.X_hat = reconstruct_from_patches_2d(recon, self.X.shape)
+        if self.log_amplitude:
+            self.X_hat = np.exp(self.X_hat) - 1.0 # invert log transform
 
     def reconstruct_individual_spectra(self, w=None, randomize=False, plotting=False, rectify=True, **kwargs):
     	"""fit each dictionary component to self.data
@@ -181,6 +188,8 @@ class SparseApproxSpectrum(object):
         for i in range(len(self.w.T)):
 	    	r=np.array((np.matrix(w)[:,i]*np.matrix(components)[i,:])).reshape(-1,*self.patch_size)
         	X_hat = reconstruct_from_patches_2d(r, self.X.shape)
+                if self.log_amplitude:
+                    X_hat = np.exp(X_hat) - 1.0
                 if rectify: # half wave rectification
                     X_hat[X_hat<0] = 0
                 self.X_hat_l.append(X_hat)
